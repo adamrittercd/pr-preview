@@ -29,13 +29,29 @@ github_api() {
   local method="$1"
   local url="$2"
   shift 2
-  curl -fsS \
+
+  local response
+  response=$(curl -sS \
     -X "$method" \
     -H "Authorization: Bearer $GITHUB_TOKEN" \
     -H "Accept: application/vnd.github+json" \
     -H "X-GitHub-Api-Version: 2022-11-28" \
     -H "User-Agent: pr-preview-action" \
-    "$url" "$@"
+    -w '\n%{http_code}' \
+    "$url" "$@") || return 1
+
+  local status
+  status=${response##*$'\n'}
+  GITHUB_API_LAST_STATUS="$status"
+
+  local body
+  body=${response%$'\n'$status}
+
+  printf '%s' "$body"
+
+  if [[ "$status" =~ ^[45] ]]; then
+    return 1
+  fi
 }
 
 get_pr_number() {
@@ -173,7 +189,11 @@ update_preview_comment() {
   local comments_endpoint="https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${pr_number}/comments"
   local comments_json
   if ! comments_json=$(github_api GET "${comments_endpoint}?per_page=100"); then
-    log "failed to fetch existing comments"
+    if [[ "${GITHUB_API_LAST_STATUS:-}" == "403" ]]; then
+      log "insufficient permission to read PR comments (need issues: write permission)"
+    else
+      log "failed to fetch existing comments"
+    fi
     return
   fi
 
@@ -182,13 +202,21 @@ update_preview_comment() {
 
   if [[ -n "$comment_id" ]]; then
     if ! github_api PATCH "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" -d "$payload" >/dev/null; then
-      log "failed to update preview comment"
+      if [[ "${GITHUB_API_LAST_STATUS:-}" == "403" ]]; then
+        log "insufficient permission to update preview comment"
+      else
+        log "failed to update preview comment"
+      fi
     else
       log "updated preview comment for PR #${pr_number}"
     fi
   else
     if ! github_api POST "$comments_endpoint" -d "$payload" >/dev/null; then
-      log "failed to create preview comment"
+      if [[ "${GITHUB_API_LAST_STATUS:-}" == "403" ]]; then
+        log "insufficient permission to create preview comment"
+      else
+        log "failed to create preview comment"
+      fi
     else
       log "posted preview comment for PR #${pr_number}"
     fi
@@ -218,7 +246,11 @@ delete_preview_comment() {
 
   if [[ -n "$comment_id" ]]; then
     if ! github_api DELETE "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" >/dev/null; then
-      log "failed to delete preview comment"
+      if [[ "${GITHUB_API_LAST_STATUS:-}" == "403" ]]; then
+        log "insufficient permission to delete preview comment"
+      else
+        log "failed to delete preview comment"
+      fi
     else
       log "deleted preview comment for PR #${pr_number}"
     fi
