@@ -18,6 +18,7 @@ runs:
       env:
         SERVICE_NAME: ${{ inputs.service }}
         BASE_DOMAIN: ${{ inputs.base-domain }}
+        GITHUB_TOKEN: ${{ github.token }}
       run: |
         "${{ github.action_path }}/scripts/run.sh"
 branding:
