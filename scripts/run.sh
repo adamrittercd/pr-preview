@@ -42,6 +42,7 @@ github_api() {
 
   local exit_code=$?
   if (( exit_code != 0 )); then
+    log "curl exited with code ${exit_code} for ${method} ${url}"
     GITHUB_API_LAST_STATUS=""
     GITHUB_API_LAST_BODY=""
     return 1
@@ -195,6 +196,7 @@ update_preview_comment() {
   payload=$(jq -Rn --arg body "$body" '{body:$body}')
 
   local comments_endpoint="https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${pr_number}/comments"
+  log "using comments endpoint ${comments_endpoint}"
   local comments_json
   if ! comments_json=$(github_api GET "${comments_endpoint}?per_page=100"); then
     if [[ "${GITHUB_API_LAST_STATUS:-}" == "403" ]]; then
