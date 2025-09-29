@@ -1,13 +1,40 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-service="${SERVICE_NAME:?SERVICE_NAME env required}"
 base_domain="${BASE_DOMAIN:?BASE_DOMAIN env required}"
 workspace="${GITHUB_WORKSPACE:-$PWD}"
 
 log() {
   echo "[pr-preview] $*" >&2
 }
+
+determine_service_name() {
+  if [[ -n "${SERVICE_NAME:-}" ]]; then
+    printf '%s' "$SERVICE_NAME"
+    return 0
+  fi
+
+  if [[ -n "${GITHUB_REPOSITORY:-}" ]]; then
+    local repo_name
+    repo_name="${GITHUB_REPOSITORY##*/}"
+    if [[ -n "$repo_name" && "$repo_name" != "." ]]; then
+      printf '%s' "$repo_name"
+      return 0
+    fi
+  fi
+
+  local workspace_name
+  workspace_name=$(basename "$workspace")
+  if [[ -n "$workspace_name" && "$workspace_name" != "." ]]; then
+    printf '%s' "$workspace_name"
+    return 0
+  fi
+
+  log "unable to determine service name automatically; set the service input explicitly"
+  exit 1
+}
+
+service="$(determine_service_name)"
 
 require_command() {
   local cmd="$1"

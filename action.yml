@@ -4,7 +4,7 @@ author: 'adamrittercd'
 inputs:
   service:
     description: 'Service identifier used for container names and domains'
-    required: true
+    required: false
   base-domain:
     description: 'Base domain suffix (e.g. example.com)'
     required: true
