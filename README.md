@@ -20,7 +20,6 @@ jobs:
   preview:
     runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v4
       - uses: adamrittercd/pr-preview@main
         with:
           service: hello-cd
@@ -34,6 +33,8 @@ jobs:
 - `pull_request` events (opened/synchronize/reopened) build the Docker image, run a container, and publish it via Caddy at `https://pr-<number>.<service>.<base-domain>`.
 - `pull_request` events with action `closed` tear down the corresponding container and remove the Caddy site.
 - `push` events deploy the main branch to `https://<service>.<base-domain>` using the provided `main-port`.
+
+The action performs an `actions/checkout@v4` under the hood, so you don’t need a separate checkout step.
 
 ### Requirements
 
