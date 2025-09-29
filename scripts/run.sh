@@ -6,7 +6,7 @@ base_domain="${BASE_DOMAIN:?BASE_DOMAIN env required}"
 workspace="${GITHUB_WORKSPACE:-$PWD}"
 
 log() {
-  echo "[pr-preview] $*"
+  echo "[pr-preview] $*" >&2
 }
 
 require_command() {
@@ -53,7 +53,7 @@ start_container() {
   local image="$2"
 
   log "building image $image"
-  docker build -t "$image" "$workspace"
+  docker build -t "$image" "$workspace" >&2
 
   if docker ps -a --format '{{.Names}}' | grep -Fqx "$container"; then
     log "removing existing container $container"
