@@ -55,6 +55,7 @@ github_api() {
   local body
   body=${response%$'\n'$status}
   GITHUB_API_LAST_BODY="$body"
+  log "github_api ${method} ${url} -> status ${status} body_length ${#body}"
 
   printf '%s' "$body"
 
