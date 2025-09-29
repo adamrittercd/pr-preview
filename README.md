@@ -31,14 +31,14 @@ jobs:
 - `pull_request` events (opened/synchronize/reopened) build the Docker image, run a container, and publish it via Caddy at `https://pr-<number>.<service>.<base-domain>`.
 - `pull_request` events with action `closed` tear down the corresponding container and remove the Caddy site.
 - `push` events deploy the main branch to `https://<service>.<base-domain>` with Docker choosing an available host port automatically.
+- For pull requests, the action posts (or updates) a comment on the PR with the live preview URL and host port. The comment is removed when the PR is closed.
 
 The action performs an `actions/checkout@v4` under the hood, so you don’t need a separate checkout step.
 
 ### Requirements
 
-- Runs on a self-hosted Linux runner with Docker and passwordless `sudo` available.
+- Runs on a self-hosted Linux runner with Docker, passwordless `sudo`, `curl`, and `jq` available.
 - Caddy reads virtual hosts from `/etc/caddy/conf.d` and accepts `systemctl reload caddy` to pick up changes.
-- `jq` must be installed on the runner to parse GitHub event payloads.
 
 ## Inputs
 

@@ -20,6 +20,22 @@ require_command() {
 require_command docker
 require_command sudo
 require_command jq
+require_command curl
+
+github_api() {
+  if [[ -z "${GITHUB_TOKEN:-}" ]]; then
+    return 1
+  fi
+  local method="$1"
+  local url="$2"
+  shift 2
+  curl -fsS \
+    -X "$method" \
+    -H "Authorization: Bearer $GITHUB_TOKEN" \
+    -H "Accept: application/vnd.github+json" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    "$url" "$@"
+}
 
 get_pr_number() {
   if [[ -n "${PR_NUMBER:-}" ]]; then
@@ -131,6 +147,83 @@ emit_outputs() {
   fi
 }
 
+update_preview_comment() {
+  local pr_number="$1"
+  local domain="$2"
+  local port="$3"
+
+  if [[ ${GITHUB_EVENT_NAME:-} != pull_request ]]; then
+    return
+  fi
+
+  if [[ -z "${GITHUB_TOKEN:-}" || -z "${GITHUB_REPOSITORY:-}" ]]; then
+    log "missing GITHUB_TOKEN or GITHUB_REPOSITORY; skipping PR comment"
+    return
+  fi
+
+  local url="https://${domain}"
+  local marker="<!-- pr-preview:${service} -->"
+  local body
+  body=$(printf '%s\nPreview URL: [%s](%s)\nHost port: %s\n' "$marker" "$url" "$url" "$port")
+
+  local payload
+  payload=$(jq -Rn --arg body "$body" '{body:$body}')
+
+  local comments_endpoint="https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${pr_number}/comments"
+  local comments_json
+  if ! comments_json=$(github_api GET "${comments_endpoint}?per_page=100"); then
+    log "failed to fetch existing comments"
+    return
+  fi
+
+  local comment_id
+  comment_id=$(echo "$comments_json" | jq -r --arg marker "$marker" 'map(select(.body | contains($marker))) | first?.id // empty')
+
+  if [[ -n "$comment_id" ]]; then
+    if ! github_api PATCH "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" -d "$payload" >/dev/null; then
+      log "failed to update preview comment"
+    else
+      log "updated preview comment for PR #${pr_number}"
+    fi
+  else
+    if ! github_api POST "$comments_endpoint" -d "$payload" >/dev/null; then
+      log "failed to create preview comment"
+    else
+      log "posted preview comment for PR #${pr_number}"
+    fi
+  fi
+}
+
+delete_preview_comment() {
+  local pr_number="$1"
+
+  if [[ ${GITHUB_EVENT_NAME:-} != pull_request ]]; then
+    return
+  fi
+
+  if [[ -z "${GITHUB_TOKEN:-}" || -z "${GITHUB_REPOSITORY:-}" ]]; then
+    return
+  fi
+
+  local marker="<!-- pr-preview:${service} -->"
+  local comments_endpoint="https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${pr_number}/comments"
+  local comments_json
+  if ! comments_json=$(github_api GET "${comments_endpoint}?per_page=100"); then
+    return
+  fi
+
+  local comment_id
+  comment_id=$(echo "$comments_json" | jq -r --arg marker "$marker" 'map(select(.body | contains($marker))) | first?.id // empty')
+
+  if [[ -n "$comment_id" ]]; then
+    if ! github_api DELETE "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" >/dev/null; then
+      log "failed to delete preview comment"
+    else
+      log "deleted preview comment for PR #${pr_number}"
+    fi
+  fi
+}
+
 deploy_preview() {
   local pr_number="$1"
   local container="${service}-pr-${pr_number}"
@@ -141,6 +234,7 @@ deploy_preview() {
   port=$(start_container "$container" "$image")
   write_caddy "$domain" "$port"
   emit_outputs "$container" "$domain" "$port"
+  update_preview_comment "$pr_number" "$domain" "$port"
 }
 
 remove_preview() {
@@ -158,6 +252,8 @@ remove_preview() {
   if ! remove_caddy "$domain"; then
     log "caddy config for ${domain} not found"
   fi
+
+  delete_preview_comment "$pr_number"
 }
 
 deploy_main() {
