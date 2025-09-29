@@ -8,14 +8,6 @@ inputs:
   base-domain:
     description: 'Base domain suffix (e.g. example.com)'
     required: true
-  main-port:
-    description: 'Host port for the main deployment'
-    required: false
-    default: '11000'
-  preview-port-base:
-    description: 'Base host port for PR previews; PR number mod 1000 is added to this value'
-    required: false
-    default: '13000'
 runs:
   using: 'composite'
   steps:
@@ -24,10 +16,8 @@ runs:
     - name: Manage preview deployment
       shell: bash
       env:
-        PREVIEW_PORT_BASE: ${{ inputs.preview-port-base }}
         SERVICE_NAME: ${{ inputs.service }}
         BASE_DOMAIN: ${{ inputs.base-domain }}
-        MAIN_PORT: ${{ inputs.main-port }}
       run: |
         "${{ github.action_path }}/scripts/run.sh"
 branding:

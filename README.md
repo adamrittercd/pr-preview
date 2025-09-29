@@ -24,15 +24,13 @@ jobs:
         with:
           service: hello-cd
           base-domain: ritteradam.com
-          main-port: '11000'
-          preview-port-base: '13000'
 ```
 
 ### Behaviour
 
 - `pull_request` events (opened/synchronize/reopened) build the Docker image, run a container, and publish it via Caddy at `https://pr-<number>.<service>.<base-domain>`.
 - `pull_request` events with action `closed` tear down the corresponding container and remove the Caddy site.
-- `push` events deploy the main branch to `https://<service>.<base-domain>` using the provided `main-port`.
+- `push` events deploy the main branch to `https://<service>.<base-domain>` with Docker choosing an available host port automatically.
 
 The action performs an `actions/checkout@v4` under the hood, so you don’t need a separate checkout step.
 
@@ -48,8 +46,8 @@ The action performs an `actions/checkout@v4` under the hood, so you don’t need
 | --- | --- | --- | --- |
 | `service` | ✅ | – | Service identifier used in container names and subdomains. |
 | `base-domain` | ✅ | – | Domain suffix (e.g. `example.com`). |
-| `main-port` | ❌ | `11000` | Host port for the main branch deployment. |
-| `preview-port-base` | ❌ | `13000` | Base host port for previews; PR number modulo 1000 is added. |
+
+The action exposes containers on ephemeral host ports assigned by Docker and records those ports in the generated Caddy config.
 
 ## Outputs
 

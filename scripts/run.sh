@@ -3,8 +3,6 @@ set -euo pipefail
 
 service="${SERVICE_NAME:?SERVICE_NAME env required}"
 base_domain="${BASE_DOMAIN:?BASE_DOMAIN env required}"
-main_port="${MAIN_PORT:-11000}"
-preview_port_base="${PREVIEW_PORT_BASE:-13000}"
 workspace="${GITHUB_WORKSPACE:-$PWD}"
 
 log() {
@@ -21,6 +19,7 @@ require_command() {
 
 require_command docker
 require_command sudo
+require_command jq
 
 get_pr_number() {
   if [[ -n "${PR_NUMBER:-}" ]]; then
@@ -49,10 +48,9 @@ get_pr_number() {
   return 1
 }
 
-build_and_run() {
+start_container() {
   local container="$1"
   local image="$2"
-  local port="$3"
 
   log "building image $image"
   docker build -t "$image" "$workspace"
@@ -62,8 +60,24 @@ build_and_run() {
     docker rm -f "$container" >/dev/null
   fi
 
-  log "starting container $container on port $port"
-  docker run -d --name "$container" -p "${port}:80" "$image" >/dev/null
+  log "starting container $container with dynamic port"
+  docker run -d --name "$container" -p 0:80 "$image" >/dev/null
+
+  local port=""
+  for attempt in {1..10}; do
+    port=$(docker inspect "$container" | jq -r '.[0].NetworkSettings.Ports["80/tcp"][0].HostPort // empty')
+    if [[ -n "$port" ]]; then
+      break
+    fi
+    sleep 1
+  done
+
+  if [[ -z "$port" ]]; then
+    log "failed to discover host port for $container"
+    exit 1
+  fi
+
+  echo "$port"
 }
 
 write_caddy() {
@@ -119,12 +133,12 @@ emit_outputs() {
 
 deploy_preview() {
   local pr_number="$1"
-  local port=$(( preview_port_base + pr_number % 1000 ))
   local container="${service}-pr-${pr_number}"
   local image="${container}:latest"
   local domain="pr-${pr_number}.${service}.${base_domain}"
 
-  build_and_run "$container" "$image" "$port"
+  local port
+  port=$(start_container "$container" "$image")
   write_caddy "$domain" "$port"
   emit_outputs "$container" "$domain" "$port"
 }
@@ -150,9 +164,9 @@ deploy_main() {
   local container="${service}-main"
   local image="${container}:latest"
   local domain="${service}.${base_domain}"
-  local port="$main_port"
 
-  build_and_run "$container" "$image" "$port"
+  local port
+  port=$(start_container "$container" "$image")
   write_caddy "$domain" "$port"
   emit_outputs "$container" "$domain" "$port"
 }
