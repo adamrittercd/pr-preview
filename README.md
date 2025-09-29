@@ -16,6 +16,11 @@ on:
   push:
     branches: [ main ]
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 jobs:
   preview:
     runs-on: self-hosted
