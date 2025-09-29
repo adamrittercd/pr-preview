@@ -4,7 +4,7 @@ Reusable GitHub Action to deploy or tear down Docker-based preview environments 
 
 ## Usage
 
-Create a workflow that triggers on `pull_request` and `push` events and call the action from a job running on your self-hosted runner:
+Create `.github/workflows/pr-preview.yml` that triggers on `pull_request` and `push` events and call the action from a job running on your self-hosted runner:
 
 ```yaml
 name: PR Preview
@@ -27,6 +27,8 @@ jobs:
       - uses: adamrittercd/pr-preview@main
         with:
           base-domain: ritteradam.com
+
+That is the entire configuration for a simple repository: the action derives the service name automatically and only needs the base domain (`ritteradam.com` in this example) to publish previews.
 ```
 
 ### Behaviour
