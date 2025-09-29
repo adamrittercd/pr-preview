@@ -38,7 +38,14 @@ github_api() {
     -H "X-GitHub-Api-Version: 2022-11-28" \
     -H "User-Agent: pr-preview-action" \
     -w '\n%{http_code}' \
-    "$url" "$@") || return 1
+    "$url" "$@")
+
+  local exit_code=$?
+  if (( exit_code != 0 )); then
+    GITHUB_API_LAST_STATUS=""
+    GITHUB_API_LAST_BODY=""
+    return 1
+  fi
 
   local status
   status=${response##*$'\n'}
@@ -46,6 +53,7 @@ github_api() {
 
   local body
   body=${response%$'\n'$status}
+  GITHUB_API_LAST_BODY="$body"
 
   printf '%s' "$body"
 
