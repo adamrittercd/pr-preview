@@ -26,7 +26,6 @@ jobs:
     steps:
       - uses: adamrittercd/pr-preview@main
         with:
-          service: hello-cd
           base-domain: ritteradam.com
 ```
 
@@ -48,7 +47,7 @@ The action performs an `actions/checkout@v4` under the hood, so you don’t need
 
 | Name | Required | Default | Description |
 | --- | --- | --- | --- |
-| `service` | ✅ | – | Service identifier used in container names and subdomains. |
+| `service` | ❌ | Repository name | Service identifier used in container names and subdomains. Defaults to the repository name (with the workspace folder name as a fallback). |
 | `base-domain` | ✅ | – | Domain suffix (e.g. `example.com`). |
 
 The action exposes containers on ephemeral host ports assigned by Docker and records those ports in the generated Caddy config.
