@@ -204,6 +204,9 @@ update_preview_comment() {
       log "insufficient permission to read PR comments (need issues: write permission)"
     else
       log "failed to fetch existing comments (status ${GITHUB_API_LAST_STATUS:-unknown})"
+      if [[ -n "${GITHUB_API_LAST_BODY:-}" ]]; then
+        log "GitHub API response: ${GITHUB_API_LAST_BODY}"
+      fi
     fi
     return
   fi
@@ -217,6 +220,9 @@ update_preview_comment() {
         log "insufficient permission to update preview comment"
       else
         log "failed to update preview comment (status ${GITHUB_API_LAST_STATUS:-unknown})"
+        if [[ -n "${GITHUB_API_LAST_BODY:-}" ]]; then
+          log "GitHub API response: ${GITHUB_API_LAST_BODY}"
+        fi
       fi
     else
       log "updated preview comment for PR #${pr_number}"
@@ -227,6 +233,9 @@ update_preview_comment() {
         log "insufficient permission to create preview comment"
       else
         log "failed to create preview comment (status ${GITHUB_API_LAST_STATUS:-unknown})"
+        if [[ -n "${GITHUB_API_LAST_BODY:-}" ]]; then
+          log "GitHub API response: ${GITHUB_API_LAST_BODY}"
+        fi
       fi
     else
       log "posted preview comment for PR #${pr_number}"
@@ -261,6 +270,9 @@ delete_preview_comment() {
         log "insufficient permission to delete preview comment"
       else
         log "failed to delete preview comment (status ${GITHUB_API_LAST_STATUS:-unknown})"
+        if [[ -n "${GITHUB_API_LAST_BODY:-}" ]]; then
+          log "GitHub API response: ${GITHUB_API_LAST_BODY}"
+        fi
       fi
     else
       log "deleted preview comment for PR #${pr_number}"
