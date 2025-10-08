@@ -131,7 +131,7 @@ start_container() {
   fi
 
   log "starting container $container with dynamic port"
-  docker run -d --name "$container" -p 0:80 "$image" >/dev/null
+  docker run -d --name "$container" --restart unless-stopped -p 0:80 "$image" >/dev/null
 
   local port=""
   for attempt in {1..10}; do
